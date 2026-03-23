@@ -5,6 +5,8 @@ import {
   ArrowLeft,
   Bot,
   Download,
+  FileImage,
+  FileVideo,
   Filter,
   Maximize2,
   Music,
@@ -52,6 +54,8 @@ type Tool =
   | "media"
   | null;
 
+type MediaFilter = "all" | "video" | "audio" | "image";
+
 const tools: {
   id: Tool;
   label: string;
@@ -84,6 +88,13 @@ const FILTER_CSS: Record<string, string> = {
 
 const timeMarks = [0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 const TIMELINE_PX_PER_SEC = 60;
+
+function MediaTypeIcon({ type }: { type: string }) {
+  if (type === "video")
+    return <FileVideo size={16} style={{ color: "#60a5fa" }} />;
+  if (type === "audio") return <Music size={16} style={{ color: "#34d399" }} />;
+  return <FileImage size={16} style={{ color: "#f59e0b" }} />;
+}
 
 function EditorScreenInner({ onBack }: Props) {
   const store = useEditorStoreInternal();
@@ -132,6 +143,7 @@ function EditorScreenInner({ onBack }: Props) {
 
   const [isMuted, setIsMuted] = useState(false);
   const [activeTool, setActiveTool] = useState<Tool>(null);
+  const [mediaFilter, setMediaFilter] = useState<MediaFilter>("all");
   // Adjust panel state
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast] = useState(100);
@@ -211,6 +223,11 @@ function EditorScreenInner({ onBack }: Props) {
     (t) => currentTime >= t.start && currentTime < t.start + t.duration,
   );
 
+  // Filtered media files
+  const filteredMedia = mediaFiles.filter((mf) =>
+    mediaFilter === "all" ? true : mf.type === mediaFilter,
+  );
+
   const formatTime = (t: number) => {
     const m = Math.floor(t / 60);
     const s = Math.floor(t % 60);
@@ -285,16 +302,23 @@ function EditorScreenInner({ onBack }: Props) {
     }, 200);
   };
 
+  const mediaFilterTabs: { id: MediaFilter; label: string }[] = [
+    { id: "all", label: "All" },
+    { id: "video", label: "Video" },
+    { id: "audio", label: "Audio" },
+    { id: "image", label: "Image" },
+  ];
+
   const renderToolPanel = () => {
     if (!activeTool) return null;
     return (
       <div
-        className="px-4 py-4 border-t shrink-0"
+        className="px-4 py-4 border-t shrink-0 overflow-y-auto"
         style={{
           background: "#111",
           borderColor: "#2a2a2a",
-          maxHeight: 220,
-          overflowY: "auto",
+          maxHeight: "35vh",
+          minHeight: 120,
         }}
       >
         {/* MEDIA PANEL */}
@@ -308,6 +332,7 @@ function EditorScreenInner({ onBack }: Props) {
               className="hidden"
               onChange={(e) => handleMediaFileAdd(e.target.files)}
             />
+            {/* Header row */}
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold" style={{ color: "#9ca3af" }}>
                 MEDIA FILES
@@ -322,56 +347,127 @@ function EditorScreenInner({ onBack }: Props) {
                 <Plus size={12} /> Add
               </button>
             </div>
-            {mediaFiles.length === 0 && (
-              <p
-                className="text-xs py-4 text-center"
-                style={{ color: "#4b5563" }}
-                data-ocid="editor.media.empty_state"
-              >
-                No media yet — tap Add to import files
-              </p>
-            )}
-            <div className="space-y-2">
-              {mediaFiles.map((mf, i) => (
-                <div
-                  key={mf.id}
-                  className="flex items-center gap-3 p-2 rounded-xl"
-                  style={{ background: "#1c1c1e" }}
-                  data-ocid={`editor.media.item.${i + 1}`}
+
+            {/* Filter tabs */}
+            <div className="flex gap-1.5 mb-3">
+              {mediaFilterTabs.map((tab) => (
+                <button
+                  type="button"
+                  key={tab.id}
+                  onClick={() => setMediaFilter(tab.id)}
+                  className="px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors"
+                  style={{
+                    background: mediaFilter === tab.id ? "#2563eb" : "#1c1c1e",
+                    color: mediaFilter === tab.id ? "#fff" : "#9ca3af",
+                  }}
+                  data-ocid="editor.media.tab"
                 >
-                  {mf.thumbnailUrl ? (
-                    <img
-                      src={mf.thumbnailUrl}
-                      alt={mf.name}
-                      className="w-12 h-8 rounded object-cover shrink-0"
-                    />
-                  ) : (
-                    <div
-                      className="w-12 h-8 rounded shrink-0 flex items-center justify-center"
-                      style={{ background: "#2a2a2a" }}
-                    >
-                      <Music size={14} style={{ color: "#6b7280" }} />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-white truncate">{mf.name}</p>
-                    <p className="text-[10px]" style={{ color: "#6b7280" }}>
-                      {mf.type} ·{" "}
-                      {mf.duration ? `${mf.duration.toFixed(1)}s` : ""}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleAddToTimeline(mf.id)}
-                    className="shrink-0 w-7 h-7 rounded-full flex items-center justify-center"
-                    style={{ background: "#2563eb" }}
-                    data-ocid={`editor.media.add_button.${i + 1}`}
-                  >
-                    <Plus size={14} className="text-white" />
-                  </button>
-                </div>
+                  {tab.label}
+                </button>
               ))}
             </div>
+
+            {/* Empty state */}
+            {filteredMedia.length === 0 && (
+              <div
+                className="flex flex-col items-center justify-center py-6 rounded-xl gap-2"
+                style={{ background: "#0d0d0d", border: "1px dashed #2a2a2a" }}
+                data-ocid="editor.media.empty_state"
+              >
+                <Upload size={28} style={{ color: "#374151" }} />
+                <p className="text-xs font-medium" style={{ color: "#4b5563" }}>
+                  {mediaFilter === "all"
+                    ? "No media imported yet"
+                    : `No ${mediaFilter} files`}
+                </p>
+                <p className="text-[10px]" style={{ color: "#374151" }}>
+                  Tap Add to import files
+                </p>
+              </div>
+            )}
+
+            {/* 2-column grid */}
+            {filteredMedia.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {filteredMedia.map((mf, i) => (
+                  <div
+                    key={mf.id}
+                    className="relative rounded-xl overflow-hidden group"
+                    style={{ background: "#1c1c1e" }}
+                    data-ocid={`editor.media.item.${i + 1}`}
+                  >
+                    {/* Thumbnail */}
+                    <div
+                      className="relative w-full"
+                      style={{ aspectRatio: "16/9" }}
+                    >
+                      {mf.thumbnailUrl ? (
+                        <img
+                          src={mf.thumbnailUrl}
+                          alt={mf.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div
+                          className="w-full h-full flex items-center justify-center"
+                          style={{ background: "#0d0d0d" }}
+                        >
+                          <MediaTypeIcon type={mf.type} />
+                        </div>
+                      )}
+                      {/* Type icon badge */}
+                      <div
+                        className="absolute top-1 left-1 rounded-md p-0.5"
+                        style={{ background: "rgba(0,0,0,0.65)" }}
+                      >
+                        <MediaTypeIcon type={mf.type} />
+                      </div>
+                      {/* Duration badge */}
+                      {mf.duration ? (
+                        <div
+                          className="absolute bottom-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold"
+                          style={{
+                            background: "rgba(0,0,0,0.7)",
+                            color: "#fff",
+                          }}
+                        >
+                          {mf.duration.toFixed(1)}s
+                        </div>
+                      ) : null}
+                      {/* Add button — always visible on mobile, hover on desktop */}
+                      <button
+                        type="button"
+                        onClick={() => handleAddToTimeline(mf.id)}
+                        className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ background: "rgba(37,99,235,0.55)" }}
+                        data-ocid={`editor.media.add_button.${i + 1}`}
+                      >
+                        <div
+                          className="w-8 h-8 rounded-full flex items-center justify-center"
+                          style={{ background: "#2563eb" }}
+                        >
+                          <Plus size={16} className="text-white" />
+                        </div>
+                      </button>
+                    </div>
+                    {/* File name + tap-add row */}
+                    <div className="flex items-center justify-between px-2 py-1.5 gap-1">
+                      <p className="text-[10px] text-white truncate flex-1">
+                        {mf.name}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleAddToTimeline(mf.id)}
+                        className="shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                        style={{ background: "#2563eb" }}
+                      >
+                        <Plus size={10} className="text-white" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -886,13 +982,19 @@ function EditorScreenInner({ onBack }: Props) {
 
   return (
     <EditorContext.Provider value={store}>
-      <div className="flex flex-col h-full" style={{ background: "#000" }}>
+      <div
+        className="flex flex-col h-screen overflow-hidden"
+        style={{ background: "#000" }}
+      >
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 pt-10 pb-3 shrink-0">
+        <div
+          className="flex items-center justify-between px-4 pt-safe pt-3 pb-2 shrink-0"
+          style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }}
+        >
           <button
             type="button"
             onClick={onBack}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 p-1"
             data-ocid="editor.back.button"
           >
             <ArrowLeft size={22} className="text-white" />
@@ -910,11 +1012,12 @@ function EditorScreenInner({ onBack }: Props) {
         </div>
 
         {/* Video Preview */}
-        <div className="px-4 mb-3 shrink-0">
+        <div className="px-3 mb-2 shrink-0">
           <div
-            className="relative rounded-2xl overflow-hidden flex items-center justify-center"
+            className="relative rounded-2xl overflow-hidden flex items-center justify-center w-full"
             style={{
               aspectRatio: "16/9",
+              maxHeight: "clamp(160px, 42vh, 480px)",
               background: "#0a0a0a",
               border: "1px solid #1c1c1e",
             }}
@@ -1020,7 +1123,7 @@ function EditorScreenInner({ onBack }: Props) {
         </div>
 
         {/* Transport Controls */}
-        <div className="flex items-center justify-center gap-5 mb-3 px-4 shrink-0">
+        <div className="flex items-center justify-center gap-5 mb-2 px-4 shrink-0">
           <button
             type="button"
             onClick={() => seekTo(0)}
@@ -1071,23 +1174,25 @@ function EditorScreenInner({ onBack }: Props) {
 
         {/* Timeline */}
         <div
-          className="shrink-0 mb-2"
+          className="shrink-0"
           style={{
+            height: 80,
             background: "#0a0a0a",
             borderTop: "1px solid #1c1c1e",
             borderBottom: "1px solid #1c1c1e",
+            overflow: "hidden",
           }}
         >
           <div
             ref={timelineRef}
-            className="timeline-scroll"
-            style={{ overflowX: "auto" }}
+            className="timeline-scroll h-full"
+            style={{ overflowX: "auto", overflowY: "hidden" }}
           >
-            <div style={{ minWidth: 700, padding: "8px 16px" }}>
+            <div style={{ minWidth: 700, padding: "6px 16px" }}>
               {/* Time ruler */}
               <div
-                className="flex items-end mb-2"
-                style={{ height: 20, paddingLeft: 60 }}
+                className="flex items-end mb-1"
+                style={{ height: 16, paddingLeft: 60 }}
               >
                 {timeMarks
                   .filter((t) => t <= totalDuration + 2)
@@ -1115,7 +1220,7 @@ function EditorScreenInner({ onBack }: Props) {
               </div>
 
               {/* Playhead + tracks */}
-              <div className="relative" style={{ height: 120 }}>
+              <div className="relative" style={{ height: 50 }}>
                 {/* Playhead */}
                 <div
                   className="absolute top-0 bottom-0 w-px z-10"
@@ -1131,7 +1236,7 @@ function EditorScreenInner({ onBack }: Props) {
                 </div>
 
                 {/* VIDEO track */}
-                <div className="flex items-center mb-1.5">
+                <div className="flex items-center mb-1">
                   <span
                     className="text-[9px] font-medium shrink-0 mr-2"
                     style={{ color: "#4b5563", width: 44, textAlign: "right" }}
@@ -1155,7 +1260,7 @@ function EditorScreenInner({ onBack }: Props) {
                         className="rounded-md flex items-center justify-start px-2 cursor-pointer transition-all hover:opacity-80"
                         style={{
                           width: Math.max(40, c.duration * TIMELINE_PX_PER_SEC),
-                          height: 30,
+                          height: 24,
                           background: c.color,
                           flexShrink: 0,
                           boxShadow:
@@ -1177,7 +1282,7 @@ function EditorScreenInner({ onBack }: Props) {
                         setActiveTool("media");
                         setTimeout(() => fileInputRef.current?.click(), 100);
                       }}
-                      className="w-7 h-[30px] rounded-md flex items-center justify-center shrink-0"
+                      className="w-7 h-6 rounded-md flex items-center justify-center shrink-0"
                       style={{
                         background: "#1c1c1e",
                         border: "1px dashed #2a2a2a",
@@ -1190,7 +1295,7 @@ function EditorScreenInner({ onBack }: Props) {
                 </div>
 
                 {/* AUDIO track */}
-                <div className="flex items-center mb-1.5">
+                <div className="flex items-center">
                   <span
                     className="text-[9px] font-medium shrink-0 mr-2"
                     style={{ color: "#4b5563", width: 44, textAlign: "right" }}
@@ -1209,7 +1314,7 @@ function EditorScreenInner({ onBack }: Props) {
                             40,
                             c.duration * (TIMELINE_PX_PER_SEC / 2),
                           ),
-                          height: 30,
+                          height: 24,
                           background: c.color,
                           flexShrink: 0,
                           boxShadow:
@@ -1226,47 +1331,12 @@ function EditorScreenInner({ onBack }: Props) {
                     ))}
                   </div>
                 </div>
-
-                {/* TEXT track */}
-                <div className="flex items-center">
-                  <span
-                    className="text-[9px] font-medium shrink-0 mr-2"
-                    style={{ color: "#4b5563", width: 44, textAlign: "right" }}
-                  >
-                    TEXT
-                  </span>
-                  <div className="flex gap-1">
-                    {textOverlays.map((t, i) => (
-                      <button
-                        type="button"
-                        key={t.id}
-                        onClick={() => setSelectedClipId(t.id)}
-                        className="rounded-md flex items-center justify-start px-2 cursor-pointer transition-opacity hover:opacity-80"
-                        style={{
-                          width: Math.max(40, t.duration * TIMELINE_PX_PER_SEC),
-                          height: 30,
-                          background: "#3d1f7a",
-                          flexShrink: 0,
-                          boxShadow:
-                            selectedClipId === t.id
-                              ? "0 0 0 2px #a78bfa"
-                              : "none",
-                        }}
-                        data-ocid={`editor.timeline.item.${i + 20}`}
-                      >
-                        <span className="text-[10px] font-medium text-white truncate">
-                          {t.text}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tool panel */}
+        {/* Tool panel (slide-up, scrollable) */}
         {activeTool && renderToolPanel()}
 
         {/* Bottom Toolbar */}
@@ -1275,7 +1345,7 @@ function EditorScreenInner({ onBack }: Props) {
           style={{ background: "#111", borderTop: "1px solid #2a2a2a" }}
         >
           <div
-            className="flex items-center gap-1 px-3 py-3"
+            className="flex items-center gap-1 px-2 py-2"
             style={{ minWidth: "max-content" }}
           >
             {tools.map(({ id, label, Icon }) => (
@@ -1283,11 +1353,11 @@ function EditorScreenInner({ onBack }: Props) {
                 type="button"
                 key={id}
                 onClick={() => handleToolClick(id)}
-                className="flex flex-col items-center gap-1 px-3 py-2 rounded-xl tool-pill"
+                className="flex flex-col items-center gap-1 px-2.5 py-2 rounded-xl tool-pill"
                 style={{
                   background: activeTool === id ? "#2563eb" : "#1c1c1e",
                   color: activeTool === id ? "#fff" : "#9ca3af",
-                  minWidth: 56,
+                  minWidth: 52,
                 }}
                 data-ocid={`editor.tool.${id}`}
               >

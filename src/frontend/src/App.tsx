@@ -29,12 +29,15 @@ export default function App() {
 
   return (
     <div
-      className="flex items-center justify-center w-full h-full"
+      className="flex items-center justify-center w-full h-screen overflow-hidden"
       style={{ background: "#000" }}
     >
       <div
         className="relative flex flex-col w-full h-full overflow-hidden"
-        style={{ maxWidth: 430, background: "#000" }}
+        style={{
+          maxWidth: screen === "editor" ? "100%" : 430,
+          background: "#000",
+        }}
       >
         {/* Main content area */}
         <div className="flex-1 overflow-hidden relative">

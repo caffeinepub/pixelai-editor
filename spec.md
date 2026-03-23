@@ -1,36 +1,26 @@
 # PIXELAI Editor
 
 ## Current State
-EditorScreen.tsx uses local state only - fake video preview, tool panels disconnected from store. VideoPreview.tsx and panel components (MediaPanel, AudioPanel, FiltersPanel, etc.) use useEditorStore but EditorContext is never provided. The store has all needed state: splitClipAt, deleteClip, rotation, flipH, flipV, clipSpeed, masterVolume, activeFilter, textOverlays, exportSettings, autoCut, bgRemoval, etc.
+Full-featured PWA video editor with 5 screens (Home, Templates, Editor, AI Tools, Profile). The Editor screen has a tool rail at the bottom with slide-up panels, a video preview, and a timeline. The MediaPanel is a separate sidebar component (w-72) that appears in desktop view. The EditorScreen also has an inline media panel in the tool rail panel area.
 
 ## Requested Changes (Diff)
 
 ### Add
-- EditorContext.Provider in EditorScreen.tsx using useEditorStoreInternal
-- Hidden file input in Media panel for real import (video/audio/image)
-- Real video element in preview synced to activeClipUrl, rotation, flipH, flipV, clipSpeed, masterVolume, isPlaying, currentTime
-- CSS filter applied from activeFilter and adjustment sliders
+- Dedicated full-featured Media Tool panel in the editor with: grid/list view toggle, drag-to-timeline support, media type filter tabs (All/Video/Audio/Image), clip duration badge, and prominent import button
+- Screen size responsiveness: make the entire app properly responsive for mobile (portrait/landscape) and desktop (wider screens), using adaptive layouts
 
 ### Modify
-- EditorScreen.tsx: replace all local state with store; wire each tool panel:
-  - Media: file input calls addMediaFile; clip list shown; tap adds to timeline and sets activeClipUrl
-  - Cut/Split: Apply Split calls splitClipAt(selectedClipId, currentTime)
-  - Speed: buttons set clipSpeed
-  - Rotate: buttons update rotation and flipH/flipV
-  - Filters: buttons set activeFilter; filter overlay on video
-  - Adjust: sliders apply CSS filter string to video
-  - Audio: slider sets masterVolume
-  - Text: input adds TextOverlay; overlays rendered on preview
-  - AI: toggles set autoCut, bgRemoval, beatSync, noiseRemoval state
-  - Export: settings update exportSettings; Export button shows toast
-- Timeline clips: tappable to set selectedClipId, highlight selected
+- EditorScreen: improve responsive layout so preview, timeline, and tool panels scale properly across screen sizes (mobile 360px up to desktop 1920px)
+- MediaPanel sidebar: enhance with filter tabs (All/Video/Audio/Image), grid view with proper thumbnails, and cleaner empty state
+- Tool panel area in EditorScreen: increase max height and improve scrolling for media list
+- App-level layout: ensure full viewport usage without overflow on mobile
 
 ### Remove
-- Local useState for filter, brightness, speed, rotation in EditorScreen
+- Nothing removed
 
 ## Implementation Plan
-1. Wrap EditorScreen with EditorContext.Provider using useEditorStoreInternal
-2. Replace fake preview with real synced video element
-3. Rewire each tool panel to read/write store
-4. Add file import in Media panel
-5. Make timeline clips selectable with visual highlight
+1. Update `EditorScreen.tsx` - improve responsive flex layout, adaptive preview size, proper tool panel heights
+2. Update `MediaPanel.tsx` - add type filter tabs, improve grid/list layout, better thumbnails
+3. Update inline media panel in EditorScreen - improve height, add filter tabs, grid layout
+4. Update `App.tsx` / root layout - ensure viewport meta and full height usage
+5. Update `index.css` or global styles for mobile-first responsive adjustments
